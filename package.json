@@ -1,0 +1,29 @@
+{
+  "name": "zona-movil",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "next build",
+    "start": "next start",
+    "db:setup": "node --env-file=.env.local scripts/setup.mjs",
+    "admin:hash": "node scripts/hash-password.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "preview:build": "node scripts/build-preview.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "next": "^16.0.0",
+    "pg": "^8.16.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.1.12"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}
