@@ -1,3 +1,4 @@
+import {productImages,encodeImages,validImageUrl,MAX_IMAGES} from '../../../lib/product-images.mjs';
 import {NextResponse} from 'next/server';
 import {cookies} from 'next/headers';
 import {randomUUID,randomBytes,createHash,createHmac} from 'node:crypto';
@@ -12,7 +13,7 @@ const json=(v,status=200)=>NextResponse.json(v,{status,headers:{'Cache-Control':
 const text=(max=200)=>z.string().trim().min(1).max(max);
 const cartItems=z.array(z.object({id:text(100),quantity:z.number().int().min(1).max(10)})).min(1).max(30);
 const tokenHash=t=>createHash('sha256').update(t).digest('hex');
-const product=z.object({id:z.string().optional(),name:text(120),category:text(80),price:z.number().int().min(1).max(1000000),condition:z.enum(['Nuevo','Reacondicionado']),description:text(4000),image:z.string().max(1500).refine(s=>s===''||s.startsWith('/phone')||/^https:\/\/res\.cloudinary\.com\//.test(s)),active:z.boolean()});
+const product=z.object({id:z.string().optional(),name:text(120),category:text(80),price:z.number().int().min(1).max(1000000),condition:z.enum(['Nuevo','Reacondicionado']),description:text(4000),image:z.string().max(1500).refine(s=>s===''||validImageUrl(s)).default(''),images:z.array(z.string().refine(validImageUrl)).max(MAX_IMAGES).optional(),active:z.boolean()});
 const review=z.object({id:z.string().optional(),name:text(80),rating:z.number().int().min(1).max(5),text:text(1500),published:z.boolean()});
 async function admin(){return validSession((await cookies()).get('zona_admin')?.value||'')}
 function origin(req){const expected=new URL(process.env.APP_URL||req.url).origin;if(req.headers.get('origin')!==expected)throw Error('Origen no autorizado')}
@@ -23,7 +24,7 @@ if(method==='GET'){
  if(path==='config'){if(!process.env.DATABASE_URL)return json({demo:true,enabled:false});const s=await settings();return json({shipping:await shippingSettings(),enabled:!!(s.enabled&&s.legalReady&&s.clientId&&s.secret),mode:s.mode,businessName:s.businessName||'',taxId:s.taxId||'',returns:s.returns||'',privacy:s.privacy||'',legalReady:!!s.legalReady,demo:false})}
  if(path==='admin/shipping'){if(!await admin())return json({error:'No autorizado'},401);return json(await shippingSettings())}
  if(path==='admin/session')return json({authenticated:await admin(),demo:!process.env.DATABASE_URL});
- if(path==='admin/data'){if(!await admin())return json({error:'No autorizado'},401);const [p,c,r,o,s]=await Promise.all([query('select * from products order by created_at desc'),query('select * from categories order by name'),query('select * from reviews order by created_at desc'),query('select id,customer,items,total,status,paypal_mode,fulfilled,created_at from orders order by created_at desc limit 200'),settings()]);return json({products:p.rows,categories:c.rows,reviews:r.rows,orders:o.rows,settings:{...s,secret:'',hasSecret:!!s.secret}})}
+ if(path==='admin/data'){if(!await admin())return json({error:'No autorizado'},401);const [p,c,r,o,s]=await Promise.all([query('select * from products order by created_at desc'),query('select * from categories order by name'),query('select * from reviews order by created_at desc'),query('select id,customer,items,total,status,paypal_mode,fulfilled,created_at from orders order by created_at desc limit 200'),settings()]);return json({products:p.rows.map(productImages),categories:c.rows,reviews:r.rows,orders:o.rows,settings:{...s,secret:'',hasSecret:!!s.secret}})}
  return json({error:'No encontrado'},404)
 }
 origin(req);
@@ -40,7 +41,7 @@ if(path==='admin/logout'){const response=json({ok:true});response.cookies.set('z
 if(path.startsWith('admin/')){
  if(!await admin())return json({error:'No autorizado'},401);
  if(path==='admin/shipping'){const v=shippingSchema.parse(b);await query("insert into settings(id,value) values('shipping',$1) on conflict(id) do update set value=$1",[JSON.stringify(v)]);return json({ok:true})}
- if(path==='admin/products'){const p=product.parse(b);const id=p.id||randomUUID();await query('insert into products(id,name,category,price,condition,description,image,active) values($1,$2,$3,$4,$5,$6,$7,$8) on conflict(id) do update set name=$2,category=$3,price=$4,condition=$5,description=$6,image=$7,active=$8',[id,p.name,p.category,p.price,p.condition,p.description,p.image,p.active]);return json({ok:true,id})}
+ if(path==='admin/products'){const p=product.parse(b);const id=p.id||randomUUID();await query('insert into products(id,name,category,price,condition,description,image,active) values($1,$2,$3,$4,$5,$6,$7,$8) on conflict(id) do update set name=$2,category=$3,price=$4,condition=$5,description=$6,image=$7,active=$8',[id,p.name,p.category,p.price,p.condition,p.description,encodeImages(p),p.active]);return json({ok:true,id})}
  if(path==='admin/categories'){const name=text(80).parse(b.name);const id=b.id?z.string().regex(/^[a-z0-9-]{1,80}$/).parse(b.id):name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-');await query('insert into categories(id,name) values($1,$2) on conflict(id) do update set name=$2',[id,name]);return json({ok:true})}
  if(path==='admin/reviews'){const r=review.parse(b);await query('insert into reviews(id,name,rating,text,published) values($1,$2,$3,$4,$5) on conflict(id) do update set name=$2,rating=$3,text=$4,published=$5',[r.id||randomUUID(),r.name,r.rating,r.text,r.published]);return json({ok:true})}
  if(path==='admin/delete'){const table={products:'products',categories:'categories',reviews:'reviews'}[b.type];if(!table)throw Error('Tipo no válido');await query(`delete from ${table} where id=$1`,[text(100).parse(b.id)]);return json({ok:true})}

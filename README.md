@@ -257,3 +257,11 @@ No SQL migration or new environment variables are required. Configuration uses t
 Validate a real configured zone, a non-served postcode, the free-delivery boundary and a pickup with PayPal Sandbox before accepting delivery payments. Tests cover shipping rules and PayPal payload construction; live Cloudinary, Supabase, browser checkout and PayPal transactions were not executed for this update. Update merchant purchase terms with actual delivery coverage, costs and times.
 
 This custom Next.js store is not WooCommerce. Coupons, variants, inventory reservations, customer accounts, tax engines, automated emails, carrier labels, refunds and full WooCommerce plugin compatibility are separate features, not included in this delivery update.
+
+## Product galleries and separate service pages
+
+Service URLs (`/moviles`, `/accesorios`, `/tarjetas-sim` and the other service pages) contain information only. Shop category URLs are `/tienda/moviles`, `/tienda/accesorios`, `/tienda/tarjetas-sim`. Navigation and homepage shopping shortcuts link to these product categories.
+
+Admin → Productos → Editar: select up to 10 JPG/PNG/WebP images, each at most 5 MB. Uploads append to the gallery. Choose “Usar como portada” to put an image first, or “Quitar” to remove it from the product. Save the product after upload. Partial upload failures retain completed uploads in the editor; save those and retry remaining files. Removing a gallery item does not delete the asset from Cloudinary.
+
+No database migration is required. The existing products.image text column stores a JSON array for newly saved galleries; the API normalizes legacy URL strings and new arrays to image (cover URL) plus images (ordered array). External database consumers must account for this storage format. Existing single-image products continue to render. Automated tests cover the storage round-trip, legacy products, cover order, removal and invalid URLs. Live Cloudinary upload was not tested with production credentials.
