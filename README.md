@@ -39,7 +39,7 @@ Open `http://localhost:3000`. Visit `http://localhost:3000/admin` for the read-o
 | `/impresion` | Printing and copying enquiries |
 | `/servicios` | Service directory |
 | `/producto/[id]` | Product detail |
-| `/carrito` | Cart and store-pickup checkout |
+| `/carrito` | Cart, Spain delivery and store-pickup checkout |
 | `/pago` | Server-verified payment confirmation |
 | `/nosotros`, `/contacto` | About, address, contact details and opening hours |
 | `/privacidad`, `/condiciones` | Editable privacy and purchase terms |
@@ -192,12 +192,12 @@ PayPal credentials are stored through the admin panel, not in public environment
 
 ## Store operations and scope
 
-- Orders are **store pickup only**; no shipping fee, delivery-zone system, or carrier integration has been invented.
+- Spain delivery uses admin-defined postcode zones. Carrier booking, labels and automated tracking are not integrated.
 - Product prices are stored as integer cents. Enter tax-inclusive retail prices. There is no automated tax invoice system.
 - The admin can publish/unpublish products. Numeric inventory, stock reservations, variants and inventory synchronization are not included. Only publish items the shop can supply; this implementation does not prevent overselling scarce stock.
 - Customers use guest checkout. There is no customer account area.
 - Orders are saved before requesting PayPal approval. A pending record is not proof of payment.
-- No automatic transactional emails, SMS or WhatsApp messages are sent. Contact the buyer manually when a pickup is ready, then mark the paid order as collected.
+- No automatic transactional emails, SMS or WhatsApp messages are sent. Contact the buyer manually to coordinate delivery or pickup, then mark the paid order as delivered.
 - The return page confirms payments; the admin can reconcile orders with PayPal if the browser is closed or the callback is interrupted. A webhook/background reconciliation service is not included. Check pending orders regularly.
 - Refunds/disputes are managed in PayPal. Their later status is not automatically synchronized into this admin panel.
 - Reviews are manually entered authentic reviews with customer permission; there are no fabricated reviews.
@@ -245,3 +245,15 @@ npm run preview:build
 - PayPal checkout: https://developer.paypal.com/studio/checkout/standard/getstarted
 - Cloudinary signed uploads: https://cloudinary.com/documentation/authentication_signatures
 - Neon connection guide: https://neon.com/docs/connect/connect-from-any-app
+
+## Spain delivery setup
+
+Open Admin → Entrega. Add zones, set actual prices in euros (final amounts including applicable taxes), optionally a free-delivery subtotal threshold, and an estimated delivery time. Enable home delivery and save. Pickup can remain enabled or be disabled. Delivery is initially disabled until the merchant supplies rates.
+
+Patterns support exact five-digit codes (`08860`), prefixes (`08*`), inclusive ranges (`08000-08999`), and comma-separated combinations. First active matching zone wins; use ↑ Prioridad to move specific zones before broad ones. A `*` rule includes every structurally valid Spanish postcode, including islands, Ceuta and Melilla. No matching zone means delivery is blocked, never silently free. Format validation does not prove that a physical address exists.
+
+No SQL migration or new environment variables are required. Configuration uses the existing settings table under shipping; each order saves a delivery snapshot (address, fee, zone, estimate and product subtotal) inside customer JSON. Existing orders continue working as pickup orders. PayPal receives the total including shipping and the supplied Spanish address. Prices and delivery are recalculated server-side; changes to the total require a new checkout quote before payment.
+
+Validate a real configured zone, a non-served postcode, the free-delivery boundary and a pickup with PayPal Sandbox before accepting delivery payments. Tests cover shipping rules and PayPal payload construction; live Cloudinary, Supabase, browser checkout and PayPal transactions were not executed for this update. Update merchant purchase terms with actual delivery coverage, costs and times.
+
+This custom Next.js store is not WooCommerce. Coupons, variants, inventory reservations, customer accounts, tax engines, automated emails, carrier labels, refunds and full WooCommerce plugin compatibility are separate features, not included in this delivery update.
