@@ -3,7 +3,7 @@ import {cookies} from 'next/headers';
 import {randomUUID,randomBytes,createHash,createHmac} from 'node:crypto';
 import {z} from 'zod';
 import {query,catalog} from '../../../lib/db';
-import {makeSession,validSession,verifyPassword,encrypt,totalFor} from '../../../lib/security.mjs';
+import {makeSession,validSession,adminPasswordConfigured,verifyAdminPassword,encrypt,totalFor} from '../../../lib/security.mjs';
 import {settings,paypal,isPaid} from '../../../lib/paypal';
 export const runtime='nodejs';export const dynamic='force-dynamic';
 const json=(v,status=200)=>NextResponse.json(v,{status,headers:{'Cache-Control':'no-store'}});
@@ -26,10 +26,10 @@ origin(req);
 if(Number(req.headers.get('content-length')||0)>50000)return json({error:'Solicitud demasiado grande'},413);
 const raw=await req.text();if(raw.length>50000)return json({error:'Solicitud demasiado grande'},413);const b=raw?JSON.parse(raw):{};
 if(path==='admin/login'){
- if(!process.env.DATABASE_URL||!process.env.ADMIN_PASSWORD_HASH||!process.env.ADMIN_EMAIL)return json({error:'Configura la base de datos y las variables de administrador.'},503);
+ if(!process.env.DATABASE_URL||!adminPasswordConfigured()||!process.env.ADMIN_EMAIL||(process.env.SESSION_SECRET||'').length<64)return json({error:'Configura la base de datos y las variables de administrador.'},503);
  const ip=process.env.VERCEL?req.headers.get('x-vercel-forwarded-for')||'unknown':'local';const key=createHmac('sha256',process.env.SESSION_SECRET||'login').update(ip).digest('hex');
  const r=await query("insert into login_attempts(ip,count) values($1,1) on conflict(ip) do update set count=case when login_attempts.window_start<now()-interval '15 minutes' then 1 else login_attempts.count+1 end,window_start=case when login_attempts.window_start<now()-interval '15 minutes' then now() else login_attempts.window_start end returning count",[key]);if(r.rows[0].count>10)return json({error:'Demasiados intentos. Espera 15 minutos.'},429);
- if(b.email!==process.env.ADMIN_EMAIL||typeof b.password!=='string'||b.password.length>200||!verifyPassword(b.password,process.env.ADMIN_PASSWORD_HASH))return json({error:'Credenciales incorrectas'},401);
+ if(b.email!==process.env.ADMIN_EMAIL||typeof b.password!=='string'||b.password.length>200||!verifyAdminPassword(b.password))return json({error:'Credenciales incorrectas'},401);
  const response=json({ok:true});response.cookies.set('zona_admin',makeSession(),{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'strict',path:'/',maxAge:28800});return response
 }
 if(path==='admin/logout'){const response=json({ok:true});response.cookies.set('zona_admin','',{maxAge:0,path:'/'});return response}

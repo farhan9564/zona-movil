@@ -81,7 +81,21 @@ Alternatively paste `scripts/schema.sql` into the database provider's SQL editor
 
 ## 2. Create the admin login
 
-Set `ADMIN_EMAIL` to your chosen administrator email. Generate a password hash locally using a unique password at least 14 characters long:
+For browser-only setup, add these server-only variables in Vercel → Project → Settings → Environment Variables → Production:
+
+| Name | Value |
+| --- | --- |
+| `ADMIN_EMAIL` | Your chosen login email |
+| `ADMIN_PASSWORD` | Your own unique password, 14–200 characters |
+| `SESSION_SECRET` | A random 64-character hex key |
+| `SETTINGS_ENCRYPTION_KEY` | A different random 64-character hex key |
+| `APP_URL` | Your live HTTPS website origin without a trailing slash |
+
+Keep your existing `DATABASE_URL`. Redeploy after saving, then open `/admin`. Do not set `ADMIN_PASSWORD_HASH` for this simple method; remove an old value if switching to `ADMIN_PASSWORD`. No terminal is required if you already have the two generated keys.
+
+Store the password and keys only in Vercel environment settings, never in GitHub, public files or `NEXT_PUBLIC_` variables. The server derives a salted password hash for comparison. Existing login rate limiting and HttpOnly session cookies remain in place.
+
+**Optional advanced method:** use a pre-generated hash instead of `ADMIN_PASSWORD`. Set `ADMIN_EMAIL` to your chosen administrator email, then generate a hash locally with a unique password at least 14 characters long:
 
 ```bash
 npm run admin:hash -- "YOUR-UNIQUE-LONG-PASSWORD"
@@ -166,7 +180,7 @@ Required for real administration and checkout:
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL pooled TLS connection string |
 | `ADMIN_EMAIL` | Admin login email |
-| `ADMIN_PASSWORD_HASH` | Generated password hash |
+| `ADMIN_PASSWORD` | Unique 14–200 character password (or use `ADMIN_PASSWORD_HASH` instead) |
 | `SESSION_SECRET` | Generated secret, 64 hex characters |
 | `SETTINGS_ENCRYPTION_KEY` | Separate generated key, 64 hex characters |
 | `APP_URL` | Exact HTTPS site origin, no trailing slash |
