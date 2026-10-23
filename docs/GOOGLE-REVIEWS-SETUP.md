@@ -26,3 +26,6 @@ Owner should incorporate applicable Google terms/privacy disclosures into the st
 
 ## Verification
 Production build and review normalization/security unit checks run during implementation. Live Google content cannot be verified until the owner supplies credentials in Vercel. The fallback design can be verified without credentials.
+
+## Carousel correction
+The connected state now uses two vertical tracks moving in opposite directions, with soft top/bottom fades, Spanish LTR text and the summary on the left. Hover, keyboard focus or an expanded review pauses movement. A visible pause/read button switches to static scrollable originals; reduced-motion users get static originals. Repeated items exist only to loop the animation and are inert/hidden from assistive technologies; they do not count as additional reviews. No giant invitation card is shown when credentials are missing: only a compact profile link remains. Automatic freshness means a fresh API request for each visit reaching this section, not background synchronization or access to all Google reviews. Live review content remains blocked until credentials and the verified Place ID are configured.
