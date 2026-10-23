@@ -1,0 +1,5 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {normalizeGoogleReviews,safeGoogleLink,googleProfile} from '../lib/google-reviews.mjs';
+test('Google reviews preserve original text, author attribution and source links',()=>{const d=normalizeGoogleReviews({rating:4.6,userRatingCount:27,reviews:[{rating:4,text:{text:'translation'},originalText:{text:'Original review',languageCode:'en'},authorAttribution:{displayName:'Test author',uri:'https://www.google.com/maps/contrib/123'},googleMapsUri:'https://www.google.com/maps/reviews/123'}]});assert.equal(d.reviews[0].text,'Original review');assert.equal(d.reviews[0].name,'Test author');assert.equal(d.reviews[0].language,'en');assert.equal(d.rating,4.6);assert.equal(d.count,27)});
+test('Untrusted review URLs cannot become executable links',()=>{for(const u of ['javascript:alert(1)','https://google.com.evil.test/','data:text/html,test','http://google.com'])assert.equal(safeGoogleLink(u),googleProfile);assert.equal(normalizeGoogleReviews({}).rating,null);assert.deepEqual(normalizeGoogleReviews({}).reviews,[])});
